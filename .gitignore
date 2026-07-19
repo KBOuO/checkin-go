@@ -1,0 +1,19 @@
+# Node
+node_modules/
+.next/
+out/
+.vercel/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# env
+.env
+.env.*
+!.env.example
+
+# misc
+*.log
+.DS_Store
