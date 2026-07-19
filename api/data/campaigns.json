@@ -1,0 +1,26 @@
+[
+  {
+    "id": "island-stamp-2026",
+    "title": "島嶼打卡季",
+    "slogan": "集滿島嶼的印章，換一個夏天的故事",
+    "description": "2026 夏季限定！走訪全台 12 個精選景點，抵達現場開啟打卡趣 App 完成 GPS 打卡，即可蒐集該景點的限定印章。集滿 6 枚即可兌換獎勵，全部蒐集完成再解鎖「環島達人」徽章。",
+    "starts_at": "2026-06-01T00:00:00Z",
+    "ends_at": "2026-09-30T15:59:59Z",
+    "stamp_goal": 6,
+    "reward": "打卡趣限定數位徽章 × 合作店家飲品券（示意）",
+    "spot_ids": [
+      "xiangshan-trail",
+      "jiufen-old-street",
+      "zhengbin-harbor",
+      "gaomei-wetlands",
+      "sun-moon-lake",
+      "alishan",
+      "anping-fort",
+      "pier2-art",
+      "longpan-park",
+      "qingshui-cliff",
+      "sanxiantai",
+      "penghu-bridge"
+    ]
+  }
+]
