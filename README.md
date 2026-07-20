@@ -22,7 +22,7 @@ checkin-go/
 | 1 | `add-mvp-web-api` | monorepo 骨架 + FastAPI + Next.js 活動頁（可部署展示） | 實作完成（待部署） |
 | 2 | `add-flutter-shell` | Flutter App：原生首頁 + WebView 嵌入活動頁 | 實作完成 |
 | 3 | `add-gps-checkin` | 地圖 + GPS 打卡集章（geolocator） | 實作完成 |
-| 4 | `add-firebase-analytics` | Firebase Analytics 漏斗 + Remote Config A/B | 未開始 |
+| 4 | `add-firebase-analytics` | Firebase Analytics 漏斗 + Remote Config A/B | 實作完成 |
 | 5 | `add-testing-perf` | Jest/RTL + Flutter 測試、效能優化、Android release build | 未開始 |
 
 規格見 [openspec/changes/](openspec/changes/)。
@@ -75,6 +75,36 @@ flutter run         # 預設打 Android emulator 的 10.0.2.2（host loopback）
 - GPS 打卡：flutter_map（OSM tiles）+ geolocator 即時定位，距離 ≤ 景點打卡半徑才可打卡；集章存 shared_preferences，App 重啟後保留（emulator 以 `adb emu geo fix` 實測：象山親山步道 0 公尺打卡成功、清水斷崖 92.1 公里鎖定、force-stop 重啟後進度 1/12 不變）
 - 環境備註：Gradle 需 JDK 17–21（本機用 Temurin 21，`flutter config --jdk-dir`）；中文專案路徑需 `android.overridePathCheck=true`
 - iOS：程式碼與 `ios/` 目標已就緒，但建置/上架需要 macOS + Xcode（Apple 簽章限制）。上架流程：Apple Developer 帳號 → Xcode archive → App Store Connect → TestFlight → 審核上架；Android 對應流程於 phase 5 走完（release AAB + Play Console）
+
+### Firebase（Analytics + Remote Config）
+
+專案：[checkin-go-portfolio](https://console.firebase.google.com/project/checkin-go-portfolio)（Spark 免費方案，Android app 已註冊）。
+
+```powershell
+# 初次設定（已完成，記錄供重現）
+npm install -g firebase-tools
+firebase login
+dart pub global activate flutterfire_cli
+cd app
+flutterfire configure --project=checkin-go-portfolio --platforms=android
+
+# 開發時看即時事件（免等 Console 主報表的數小時延遲）
+adb shell setprop debug.firebase.analytics.app com.checkingo.checkin_go
+# 開 https://console.firebase.google.com/project/checkin-go-portfolio/analytics/debugview
+```
+
+- **行銷漏斗事件**：`campaign_view`（首頁載入）、`checkin_success`（GPS 打卡成功，帶 spot_id/city）、
+  `stamp_goal_reached`（集滿 6 枚，僅觸發一次）。`AnalyticsService` 抽象層讓 `flutter test` 用
+  `NoopAnalyticsService`，不碰真實 SDK 也不會因平台通道報錯。
+- **Remote Config A/B**：`hero_slogan_variant`（`control` / `variant_b`）決定首頁 Hero 標語，
+  fetch 失敗自動退回 `control`；Console 改值後下次啟動即生效（debug 模式 fetch 間隔設 0）。
+
+| DebugView 即時漏斗事件 | Remote Config A/B（variant_b） |
+|---|---|
+| ![DebugView](docs/app-analytics-debugview.png) | ![variant_b](docs/app-remoteconfig-variant-b.png) |
+
+DebugView 實測：`campaign_view` ×3（對應多次啟動）、`checkin_success` ×5、`stamp_goal_reached` ×1——
+剛好在集滿第 6 枚那次觸發，之後繼續打卡不再重複，與規格場景吻合。
 
 ### 品質驗證（2026-07 基準）
 

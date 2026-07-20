@@ -1,14 +1,47 @@
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
+import 'analytics/analytics_service.dart';
+import 'analytics/remote_config_service.dart';
+import 'firebase_options.dart';
 import 'pages/home_page.dart';
 import 'pages/map_page.dart';
 import 'pages/webview_page.dart';
 
-void main() {
-  runApp(const ProviderScope(child: CheckinGoApp()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  final remoteConfig = FirebaseRemoteConfig.instance;
+  await remoteConfig.setConfigSettings(
+    RemoteConfigSettings(
+      fetchTimeout: const Duration(seconds: 10),
+      // debug 秒抓最新值方便展示 A/B 切換；production 應設合理快取間隔
+      minimumFetchInterval:
+          kDebugMode ? Duration.zero : const Duration(hours: 1),
+    ),
+  );
+  await remoteConfig.setDefaults({heroSloganVariantParam: heroSloganVariantDefault});
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        analyticsServiceProvider.overrideWithValue(
+          FirebaseAnalyticsService(FirebaseAnalytics.instance),
+        ),
+        remoteConfigServiceProvider.overrideWithValue(
+          FirebaseRemoteConfigServiceImpl(remoteConfig),
+        ),
+      ],
+      child: const CheckinGoApp(),
+    ),
+  );
 }
 
 class CheckinGoApp extends StatelessWidget {

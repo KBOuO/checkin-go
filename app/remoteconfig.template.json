@@ -1,0 +1,9 @@
+{
+  "parameters": {
+    "hero_slogan_variant": {
+      "defaultValue": { "value": "control" },
+      "description": "CheckinGo Hero 標語 A/B：control 或 variant_b",
+      "valueType": "STRING"
+    }
+  }
+}

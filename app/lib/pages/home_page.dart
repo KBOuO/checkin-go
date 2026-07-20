@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../analytics/analytics_service.dart';
+import '../analytics/remote_config_service.dart';
 import '../models.dart';
 import '../providers.dart';
 
@@ -18,6 +20,14 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final campaign = ref.watch(campaignProvider);
     final spots = ref.watch(spotsProvider);
+    final heroVariant =
+        ref.watch(heroSloganVariantProvider).value ?? heroSloganVariantDefault;
+
+    ref.listen<AsyncValue<Campaign>>(campaignProvider, (previous, next) {
+      if (next.hasValue) {
+        ref.read(analyticsServiceProvider).logCampaignView();
+      }
+    });
 
     final hasError = campaign.hasError || spots.hasError;
     final isLoading = campaign.isLoading || spots.isLoading;
@@ -45,7 +55,10 @@ class HomePage extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _CampaignBanner(campaign: campaign.requireValue),
+            _CampaignBanner(
+              campaign: campaign.requireValue,
+              sloganOverride: heroSloganVariants[heroVariant],
+            ),
             const SizedBox(height: 20),
             Text(
               '精選景點 × ${spots.requireValue.length}',
@@ -95,9 +108,11 @@ class _ErrorView extends StatelessWidget {
 }
 
 class _CampaignBanner extends StatelessWidget {
-  const _CampaignBanner({required this.campaign});
+  const _CampaignBanner({required this.campaign, this.sloganOverride});
 
   final Campaign campaign;
+  /// Remote Config A/B 決定的標語文案；null（服務未就緒/無此 key）時退回 API 給的 campaign.slogan
+  final String? sloganOverride;
 
   String _date(DateTime d) => '${d.year}/${d.month}/${d.day}';
 
@@ -139,7 +154,7 @@ class _CampaignBanner extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            campaign.slogan,
+            sloganOverride ?? campaign.slogan,
             style: const TextStyle(color: Color(0xFFCFFAFE), fontSize: 16),
           ),
           const SizedBox(height: 12),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../analytics/analytics_service.dart';
 import '../checkin/checkin_logic.dart';
 import '../checkin/location.dart';
 import '../checkin/stamps.dart';
@@ -289,6 +290,18 @@ class _SpotSheet extends ConsumerWidget {
                       await ref
                           .read(stampsProvider.notifier)
                           .collect(spot.id);
+                      final analytics = ref.read(analyticsServiceProvider);
+                      await analytics.logCheckinSuccess(
+                        spotId: spot.id,
+                        city: spot.city,
+                      );
+                      // 集章數剛好等於目標值代表「這次打卡」使其達標——
+                      // Set 每次最多 +1，這個相等判定只會在跨過門檻那一刻成立一次
+                      final updatedStamps =
+                          await ref.read(stampsProvider.future);
+                      if (updatedStamps.length == _stampGoal) {
+                        await analytics.logStampGoalReached();
+                      }
                       if (context.mounted) {
                         Navigator.of(context).pop();
                         ScaffoldMessenger.of(context).showSnackBar(

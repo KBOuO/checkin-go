@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "435940664480",
+    "project_id": "checkin-go-portfolio",
+    "storage_bucket": "checkin-go-portfolio.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:435940664480:android:045efbf16e46e642eb15c5",
+        "android_client_info": {
+          "package_name": "com.checkingo.checkin_go"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmDp2yvO9ojylWxTrwBoGVKxIENyM0Sx0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
