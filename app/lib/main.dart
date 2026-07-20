@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'pages/home_page.dart';
+import 'pages/map_page.dart';
 import 'pages/webview_page.dart';
 
 void main() {
@@ -42,7 +43,7 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _handleBack() async {
     // WebView 頁籤：系統返回鍵先走 WebView 歷史
-    if (_index == 1 && _webController != null) {
+    if (_index == 2 && _webController != null) {
       if (await _webController!.canGoBack()) {
         await _webController!.goBack();
         return;
@@ -64,6 +65,7 @@ class _AppShellState extends State<AppShell> {
           index: _index,
           children: [
             const HomePage(),
+            const MapPage(),
             WebviewPage(
               onControllerReady: (c) => _webController = c,
             ),
@@ -77,6 +79,11 @@ class _AppShellState extends State<AppShell> {
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home),
               label: '首頁',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.map_outlined),
+              selectedIcon: Icon(Icons.map),
+              label: '地圖打卡',
             ),
             NavigationDestination(
               icon: Icon(Icons.public),

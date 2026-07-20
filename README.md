@@ -21,7 +21,7 @@ checkin-go/
 |---|--------|------|------|
 | 1 | `add-mvp-web-api` | monorepo 骨架 + FastAPI + Next.js 活動頁（可部署展示） | 實作完成（待部署） |
 | 2 | `add-flutter-shell` | Flutter App：原生首頁 + WebView 嵌入活動頁 | 實作完成 |
-| 3 | `add-gps-checkin` | 地圖 + GPS 打卡集章（geolocator） | 未開始 |
+| 3 | `add-gps-checkin` | 地圖 + GPS 打卡集章（geolocator） | 實作完成 |
 | 4 | `add-firebase-analytics` | Firebase Analytics 漏斗 + Remote Config A/B | 未開始 |
 | 5 | `add-testing-perf` | Jest/RTL + Flutter 測試、效能優化、Android release build | 未開始 |
 
@@ -67,11 +67,12 @@ flutter run         # 預設打 Android emulator 的 10.0.2.2（host loopback）
 # flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000 --dart-define=WEB_URL=http://192.168.x.x:3000
 ```
 
-| 原生首頁（吃 marketing-api） | WebView 嵌入 React 活動頁 |
-|---|---|
-| ![App 首頁](docs/app-home.png) | ![App WebView](docs/app-webview.png) |
+| 原生首頁（吃 marketing-api） | 地圖打卡（12 景點 marker） | GPS 打卡 bottom sheet | WebView 嵌入 React 活動頁 |
+|---|---|---|---|
+| ![App 首頁](docs/app-home.png) | ![App 地圖](docs/app-map.png) | ![打卡 sheet](docs/app-checkin-sheet.png) | ![App WebView](docs/app-webview.png) |
 
-- 底部導覽 + IndexedStack 保留頁籤狀態；系統返回鍵優先走 WebView 歷史（PopScope）
+- 底部導覽（首頁／地圖打卡／活動網頁）+ IndexedStack 保留各頁狀態；系統返回鍵優先走 WebView 歷史（PopScope）
+- GPS 打卡：flutter_map（OSM tiles）+ geolocator 即時定位，距離 ≤ 景點打卡半徑才可打卡；集章存 shared_preferences，App 重啟後保留（emulator 以 `adb emu geo fix` 實測：象山親山步道 0 公尺打卡成功、清水斷崖 92.1 公里鎖定、force-stop 重啟後進度 1/12 不變）
 - 環境備註：Gradle 需 JDK 17–21（本機用 Temurin 21，`flutter config --jdk-dir`）；中文專案路徑需 `android.overridePathCheck=true`
 - iOS：程式碼與 `ios/` 目標已就緒，但建置/上架需要 macOS + Xcode（Apple 簽章限制）。上架流程：Apple Developer 帳號 → Xcode archive → App Store Connect → TestFlight → 審核上架；Android 對應流程於 phase 5 走完（release AAB + Play Console）
 
