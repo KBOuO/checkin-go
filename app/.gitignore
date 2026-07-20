@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Release 簽名（金鑰/密碼等同機密，不進 repo）
+/android/key.properties
+*.jks
+*.keystore

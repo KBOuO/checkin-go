@@ -23,7 +23,7 @@ checkin-go/
 | 2 | `add-flutter-shell` | Flutter App：原生首頁 + WebView 嵌入活動頁 | 實作完成 |
 | 3 | `add-gps-checkin` | 地圖 + GPS 打卡集章（geolocator） | 實作完成 |
 | 4 | `add-firebase-analytics` | Firebase Analytics 漏斗 + Remote Config A/B | 實作完成 |
-| 5 | `add-testing-perf` | Jest/RTL + Flutter 測試、效能優化、Android release build | 未開始 |
+| 5 | `add-testing-perf` | Jest/RTL + Flutter 測試、效能優化、Android release build | 實作完成 |
 
 規格見 [openspec/changes/](openspec/changes/)。
 
@@ -49,23 +49,55 @@ npm install
 npm run dev     # 開發（http://localhost:3000）
 npm run build   # SSG + ISR（revalidate 3600s）；API 沒開也能建置（fallback 靜態資料）
 npm run start   # 服務 production build
+npm test        # Jest + React Testing Library（14 項，離線可跑，不依賴 API/Web server）
 ```
 
 環境變數見 `web/.env.example`（`API_BASE_URL`、`SITE_URL`）。
 
 ![Landing Page](docs/web-desktop.png)
 
+**CJK 字型自架子集化**：`layout.tsx` 用 `next/font/local` 載入 `src/app/fonts/noto-sans-tc-*.woff2`
+（5 個字重，各 ~108KB），取代 `next/font/google`。Google Fonts 對 CJK 用 unicode-range 分片下發，
+但本站文案零散分佈在整個 CJK 統一表意文字區段，實測仍要下載 22 個檔（~1.6MB）；改用
+`scripts/subset-noto-sans-tc.py`（`fonttools`）只打包網站實際用到的 623 個字元，5 個字重合計
+~540KB，且不必再連 `fonts.gstatic.com`。文案新增字元時重跑：
+
+```powershell
+cd web
+pip install fonttools brotli
+python scripts/subset-noto-sans-tc.py
+```
+
 ### app（Flutter 3.44 / Riverpod 3 / webview_flutter）
 
 ```powershell
 cd app
 flutter pub get
-flutter test        # widget tests（Riverpod override 注入假資料）
+flutter test        # widget tests（Riverpod override 注入假資料，19 項）
 flutter build apk --debug
 flutter run         # 預設打 Android emulator 的 10.0.2.2（host loopback）
 # 實體手機改打電腦區網 IP：
 # flutter run --dart-define=API_BASE_URL=http://192.168.x.x:8000 --dart-define=WEB_URL=http://192.168.x.x:3000
 ```
+
+**Release build**：`android/key.properties`（不進 repo）設定簽名，`build.gradle.kts` 讀不到時自動
+fallback debug 簽名並印警告（不會直接建置失敗）。
+
+```powershell
+cd app
+flutter build appbundle --release   # Play Console 上架格式
+flutter build apk --release         # 直接安裝測試用
+```
+
+> ⚠️ 本機中文路徑（`C:\程式\...`）會讓 Dart AOT snapshotter 讀 `.dill` 檔失敗（release/profile
+> 專屬問題，debug 是 JIT 不受影響）。Windows junction 繞不過去（工具鏈會解回真實路徑），要把
+> `app/` **完整複製**到 ASCII 路徑（例如 `C:\dev\checkin-go-app-build\`）再從那邊建置。
+
+已用 `apksigner verify` 確認簽名憑證正確（`CN=CheckinGo Portfolio, ...`，非 debug 憑證），並在
+emulator 安裝實測：首頁正確吃到真 API 資料、地圖頁 marker/進度列正常。WebView 頁因 release
+manifest 沒有 `usesCleartextTraffic` 例外（該例外刻意只設在 debug manifest）會擋下本機 HTTP dev
+server，正確顯示「載入失敗＋重新載入」畫面而非崩潰——這是設計行為，正式部署後 `WEB_URL` 會指向
+HTTPS 網址，不受影響。
 
 | 原生首頁（吃 marketing-api） | 地圖打卡（12 景點 marker） | GPS 打卡 bottom sheet | WebView 嵌入 React 活動頁 |
 |---|---|---|---|
@@ -108,12 +140,15 @@ DebugView 實測：`campaign_view` ×3（對應多次啟動）、`checkin_succes
 
 ### 品質驗證（2026-07 基準）
 
-- Lighthouse：**SEO 100**、Best Practices 100、Accessibility 96、Performance 56（行動模擬基準，
-  主因 CJK 字型流量，為 phase 5 效能 change 的優化標的；本機 observed FCP 359ms）
+- Lighthouse：**SEO 100**、Best Practices 100、Accessibility 96、**Performance 80**
+  （字型自架子集化後由 56 提升；行動模擬節流下 simulated LCP 5.5s，但瀏覽器 observed LCP 僅
+  282ms——Lighthouse 節流模型對自架 webfont 關鍵路徑偏悲觀，是已知現象，非真實使用者體感）
 - 響應式：375px 無水平捲動（CDP 實測）；`prefers-reduced-motion` 完全停用動畫（CDP 實測）
 - 收藏（Zustand persist）：收藏 → 重新整理 → 狀態保留（CDP 實測）
 - 進場/滾動動畫為純 CSS（keyframes + scroll-driven animations），首屏不依賴 JS 即可見；
   framer-motion 用於收藏按鈕微互動
+- 自動化測試：Web（Jest + RTL）14 項、Flutter 19 項，皆離線可重跑，涵蓋倒數計時、收藏、
+  行銷漏斗事件觸發時機、Remote Config fallback、地圖頁五種狀態
 
 ## 環境需求
 
