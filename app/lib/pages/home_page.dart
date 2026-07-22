@@ -13,11 +13,42 @@ const _cardGradients = [
   [Color(0xFF7C3AED), Color(0xFFE879F9)],
 ];
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+/// 視差位移上限（像素）：橫幅背景層預留這麼多緩衝高度供反向位移，
+/// 超過此範圍鎖住不再增加，避免捲到底部時背景層跑出容器露出空白。
+const _kParallaxMaxOffset = 36.0;
+
+class _HomePageState extends ConsumerState<HomePage> {
+  final _scrollController = ScrollController();
+  double _parallax = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final next =
+        (_scrollController.offset * 0.3).clamp(0.0, _kParallaxMaxOffset);
+    if (next != _parallax) setState(() => _parallax = next);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final campaign = ref.watch(campaignProvider);
     final spots = ref.watch(spotsProvider);
     final heroVariant =
@@ -53,11 +84,13 @@ class HomePage extends ConsumerWidget {
           ]);
         },
         child: ListView(
+          controller: _scrollController,
           padding: const EdgeInsets.all(16),
           children: [
             _CampaignBanner(
               campaign: campaign.requireValue,
               sloganOverride: heroSloganVariants[heroVariant],
+              parallax: _parallax,
             ),
             const SizedBox(height: 20),
             Text(
@@ -108,60 +141,101 @@ class _ErrorView extends StatelessWidget {
 }
 
 class _CampaignBanner extends StatelessWidget {
-  const _CampaignBanner({required this.campaign, this.sloganOverride});
+  const _CampaignBanner({
+    required this.campaign,
+    this.sloganOverride,
+    this.parallax = 0,
+  });
 
   final Campaign campaign;
   /// Remote Config A/B 決定的標語文案；null（服務未就緒/無此 key）時退回 API 給的 campaign.slogan
   final String? sloganOverride;
 
+  /// 捲動視差位移量（像素）：背景漸層層依此反向位移，文字內容層不動，
+  /// 兩層速率不同即形成「背景跟得比較慢」的視差感。
+  final double parallax;
+
   String _date(DateTime d) => '${d.year}/${d.month}/${d.day}';
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF062A38), Color(0xFF0E7490), Color(0xFF22B8CF)],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFFFDBA74)),
-              color: const Color(0x33F97316),
-            ),
-            child: const Text(
-              '2026 夏季限定活動',
-              style: TextStyle(color: Color(0xFFFED7AA), fontSize: 12),
+          // 背景層：預留 _kParallaxMaxOffset 緩衝高度，隨捲動反向位移
+          Positioned(
+            top: -_kParallaxMaxOffset,
+            left: 0,
+            right: 0,
+            height: 210 + _kParallaxMaxOffset * 2,
+            child: Transform.translate(
+              key: const Key('homeBannerParallaxLayer'),
+              offset: Offset(0, _kParallaxMaxOffset - parallax),
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF062A38),
+                      Color(0xFF0E7490),
+                      Color(0xFF22B8CF),
+                    ],
+                  ),
+                ),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Icon(
+                    Icons.local_activity_outlined,
+                    size: 140,
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            campaign.title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
+          // 前景內容層：不隨視差位移，固定貼齊容器
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0xFFFDBA74)),
+                    color: const Color(0x33F97316),
+                  ),
+                  child: const Text(
+                    '2026 夏季限定活動',
+                    style: TextStyle(color: Color(0xFFFED7AA), fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  campaign.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  sloganOverride ?? campaign.slogan,
+                  style: const TextStyle(color: Color(0xFFCFFAFE), fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '${_date(campaign.startsAt)} — ${_date(campaign.endsAt)}'
+                  '・集滿 ${campaign.stampGoal} 枚換獎勵',
+                  style: const TextStyle(color: Color(0xFFA5F3FC), fontSize: 12),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            sloganOverride ?? campaign.slogan,
-            style: const TextStyle(color: Color(0xFFCFFAFE), fontSize: 16),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '${_date(campaign.startsAt)} — ${_date(campaign.endsAt)}'
-            '・集滿 ${campaign.stampGoal} 枚換獎勵',
-            style: const TextStyle(color: Color(0xFFA5F3FC), fontSize: 12),
           ),
         ],
       ),

@@ -15,9 +15,10 @@ typedef ProviderReader = T Function<T>(ProviderListenable<T> provider);
 /// 打卡＋事件追蹤的完整流程，從 widget 抽出成純邏輯函式方便測試
 /// （不必透過 UI/FlutterMap 也能驗證 analytics 觸發時機）。
 ///
-/// 集章數剛好等於目標值代表「這次打卡」使其達標——Set 每次最多 +1，
-/// 這個相等判定只會在跨過門檻那一刻成立一次。
-Future<void> performCheckin({
+/// 回傳「這次打卡是否剛好使集章數達標」，供 UI 選擇一般或達標版的蓋章動畫——
+/// 集章數剛好等於目標值代表「這次打卡」使其達標：Set 每次最多 +1，
+/// 這個相等判定只會在跨過門檻那一刻成立一次，真相只算一次、UI 不重新判斷。
+Future<bool> performCheckin({
   required ProviderReader read,
   required Spot spot,
   required int stampGoal,
@@ -26,7 +27,9 @@ Future<void> performCheckin({
   final analytics = read(analyticsServiceProvider);
   await analytics.logCheckinSuccess(spotId: spot.id, city: spot.city);
   final updatedStamps = await read(stampsProvider.future);
-  if (updatedStamps.length == stampGoal) {
+  final goalReached = updatedStamps.length == stampGoal;
+  if (goalReached) {
     await analytics.logStampGoalReached();
   }
+  return goalReached;
 }

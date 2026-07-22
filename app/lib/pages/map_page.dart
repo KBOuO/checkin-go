@@ -10,6 +10,8 @@ import '../checkin/location.dart';
 import '../checkin/stamps.dart';
 import '../models.dart';
 import '../providers.dart';
+import '../widgets/checkin_celebration_overlay.dart';
+import 'stamp_book_page.dart';
 
 const _stampGoal = 6;
 
@@ -108,7 +110,7 @@ class _CheckinMap extends ConsumerWidget {
                     child: _SpotMarker(
                       index: i,
                       collected: stamps.contains(spot.id),
-                      onTap: () => _showSpotSheet(context, spot),
+                      onTap: () => _showSpotSheet(context, spot, i),
                     ),
                   ),
               ],
@@ -120,17 +122,27 @@ class _CheckinMap extends ConsumerWidget {
           left: 12,
           right: 12,
           child: Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                children: [
-                  const Icon(Icons.approval, color: Color(0xFFF97316)),
-                  const SizedBox(width: 8),
-                  Text(
-                    '已集 ${stamps.length} / ${spots.length} 枚・目標 $_stampGoal 枚',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const StampBookPage()),
+              ),
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  children: [
+                    const Icon(Icons.approval, color: Color(0xFFF97316)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '已集 ${stamps.length} / ${spots.length} 枚・目標 $_stampGoal 枚',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.grey),
+                  ],
+                ),
               ),
             ),
           ),
@@ -139,11 +151,11 @@ class _CheckinMap extends ConsumerWidget {
     );
   }
 
-  void _showSpotSheet(BuildContext context, Spot spot) {
+  void _showSpotSheet(BuildContext context, Spot spot, int index) {
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
-      builder: (_) => _SpotSheet(spot: spot),
+      builder: (_) => _SpotSheet(spot: spot, index: index, mapContext: context),
     );
   }
 }
@@ -192,9 +204,18 @@ class _SpotMarker extends StatelessWidget {
 
 /// Consumer：sheet 開啟中位置/集章變動時，距離與按鈕即時更新
 class _SpotSheet extends ConsumerWidget {
-  const _SpotSheet({required this.spot});
+  const _SpotSheet({
+    required this.spot,
+    required this.index,
+    required this.mapContext,
+  });
 
   final Spot spot;
+  final int index;
+
+  /// 地圖頁（而非本 sheet）的 context——蓋章動畫疊在地圖畫面上，
+  /// sheet 關閉後其 context 即失效，動畫需要一個能存活更久的 context。
+  final BuildContext mapContext;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -287,17 +308,18 @@ class _SpotSheet extends ConsumerWidget {
               onPressed: (collected || !inRange)
                   ? null
                   : () async {
-                      await performCheckin(
+                      final goalReached = await performCheckin(
                         read: ref.read,
                         spot: spot,
                         stampGoal: _stampGoal,
                       );
-                      if (context.mounted) {
-                        Navigator.of(context).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('「${spot.name}」打卡成功，集章 +1！'),
-                          ),
+                      if (context.mounted) Navigator.of(context).pop();
+                      if (mapContext.mounted) {
+                        await showCheckinCelebration(
+                          mapContext,
+                          spotIndex: index,
+                          spotName: spot.name,
+                          goalReached: goalReached,
                         );
                       }
                     },

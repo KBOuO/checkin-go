@@ -33,6 +33,7 @@ checkin-go/
 | 3 | `add-gps-checkin` | 地圖 + GPS 打卡集章（geolocator） | 實作完成 |
 | 4 | `add-firebase-analytics` | Firebase Analytics 漏斗 + Remote Config A/B | 實作完成 |
 | 5 | `add-testing-perf` | Jest/RTL + Flutter 測試、效能優化、Android release build | 實作完成 |
+| 6 | `add-app-visual-polish` | App 視覺深化：自訂蓋章動畫、集章護照、首頁視差捲動 | 實作完成 |
 
 規格見 [openspec/changes/](openspec/changes/)。
 
@@ -107,7 +108,7 @@ python scripts/subset-noto-sans-tc.py
 ```powershell
 cd app
 flutter pub get
-flutter test        # widget tests（Riverpod override 注入假資料，19 項）
+flutter test        # widget tests（Riverpod override 注入假資料，25 項）
 flutter build apk --debug
 flutter run         # 預設打 Android emulator 的 10.0.2.2（host loopback）
 # 實體手機改打電腦區網 IP：
@@ -141,6 +142,17 @@ HTTPS 網址，不受影響。
 - GPS 打卡：flutter_map（OSM tiles）+ geolocator 即時定位，距離 ≤ 景點打卡半徑才可打卡；集章存 shared_preferences，App 重啟後保留（emulator 以 `adb emu geo fix` 實測：象山親山步道 0 公尺打卡成功、清水斷崖 92.1 公里鎖定、force-stop 重啟後進度 1/12 不變）
 - 環境備註：Gradle 需 JDK 17–21（本機用 Temurin 21，`flutter config --jdk-dir`）；中文專案路徑需 `android.overridePathCheck=true`
 - iOS：程式碼與 `ios/` 目標已就緒，但建置/上架需要 macOS + Xcode（Apple 簽章限制）。上架流程：Apple Developer 帳號 → Xcode archive → App Store Connect → TestFlight → 審核上架；Android 對應流程於 phase 5 走完（release AAB + Play Console）
+
+**視覺與互動深化**（自訂動畫／複雜 Widget 組合，全部零外部素材、程式繪製）：
+
+| 首頁視差捲動 | 蓋章動畫（一般／達標版） | 集章護照 |
+|---|---|---|
+| ![視差](docs/app-home-parallax-scrolled.png) | ![蓋章](docs/app-checkin-celebration-goal.png) | ![護照](docs/app-stamp-book.png) |
+
+- 打卡成功不再是純文字 SnackBar，改成 `CustomPainter` 手繪的不規則邊緣印章（雙層疊印模擬蓋章力道不均），`AnimationController` + `TweenSequence` 編排「彈跳進場 → 停留 → 淡出」單一連續時間軸；集滿目標時額外顯示紅色達標版本（一般版橘色）
+- 「集章護照」畫面（地圖頁進度卡片點入）：`GridView` 呈現 12 顆印章，每顆依景點編號算出固定傾斜角度，已集/未集視覺分明
+- 首頁活動橫幅捲動視差：背景裝飾層位移速率與列表不同，`ScrollController` 監聽 + `Transform.translate`
+- 三者共用同一顆 `StampBadge`/`StampPainter`（見 `lib/widgets/`），驗證：emulator 以 `adb emu geo fix` 依序打卡滿 6 個景點，實測一般版（橘色）與達標版（紅色）文案正確區分、動畫皆自動消失回到地圖
 
 ### Firebase（Analytics + Remote Config）
 

@@ -58,7 +58,7 @@ void main() {
 
   tearDown(() => container.dispose());
 
-  Future<void> checkin(Spot spot) =>
+  Future<bool> checkin(Spot spot) =>
       performCheckin(read: container.read, spot: spot, stampGoal: 6);
 
   test('打卡成功記錄 checkin_success 並帶正確 spot_id/city', () async {
@@ -68,19 +68,23 @@ void main() {
     expect(spy.checkinCities, ['台北市']);
   });
 
-  test('集章數未達目標時不觸發 stamp_goal_reached', () async {
+  test('集章數未達目標時不觸發 stamp_goal_reached，回傳 false', () async {
+    var lastResult = true;
     for (final id in ['s1', 's2', 's3', 's4', 's5']) {
-      await checkin(_spot(id, '台北市'));
+      lastResult = await checkin(_spot(id, '台北市'));
     }
     expect(spy.stampGoalReachedCalls, 0);
+    expect(lastResult, isFalse);
   });
 
-  test('達標當次觸發一次，之後繼續打卡不再重複', () async {
+  test('達標當次觸發一次、回傳 true，之後繼續打卡不再重複且回傳 false', () async {
     final ids = ['s1', 's2', 's3', 's4', 's5', 's6', 's7'];
+    final results = <bool>[];
     for (final id in ids) {
-      await checkin(_spot(id, '台北市'));
+      results.add(await checkin(_spot(id, '台北市')));
     }
     expect(spy.stampGoalReachedCalls, 1);
     expect(spy.checkinSpotIds.length, 7);
+    expect(results, [false, false, false, false, false, true, false]);
   });
 }
